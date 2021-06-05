@@ -1,0 +1,6 @@
+/.idea/
+/build/lib/
+/dist/
+/meshstatus/pda.egg-info/
+/meshstatus.egg-info/
+/venv/

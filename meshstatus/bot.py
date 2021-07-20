@@ -1,10 +1,11 @@
 import asyncio
 import socketio
 
-SOCKET_IP = "https://status.meshmonitors.io"
+SOCKET_IP = "https://api.status.meshmonitors.io"
 sio = socketio.AsyncClient()
 
 token = None
+authErr = False
 
 
 class Bot:
@@ -13,7 +14,7 @@ class Bot:
     def __init__(self, **args):
         global SOCKET_IP
         if args.get("test"):
-            SOCKET_IP = "http://server.localtest.me"
+            SOCKET_IP = "http://localhost:3000"
         self._listeners = {}
         self.sio = sio
         self.headers = {'Accept': 'text/plain',
@@ -25,34 +26,39 @@ class Bot:
 
     async def main(self, new_token):
         await self.sio.connect(SOCKET_IP, namespaces=['/'], transports=['websocket'])
+        authErr = False
+        print("Connecting to MeshStatus")
+        await sio.emit("connection")
         await sio.emit('authentication', {'token': new_token})
 
+
         @sio.event
-        def auth_err(data):
-            print("Invalid Token")
+        async def auth_err(data):
+            global authErr
+            print(data)
+            authErr = True
+            await sio.disconnect()
+
+        @sio.event
+        async def alive_status(data):
+            await sio.emit("alive_status_return", "alive")
+
+        @sio.on('connected')
+        async def on_connect(data):
+            print("Connected to MeshStatus")
+
+        @sio.event
+        async def on_disconnect(data):
+            if data == "transport close":
+                print("Server has been restarted! Trying to reconnect")
+            elif not authErr:
+                print("Disconnected, trying to reconnect")
+                await self.sio.connect(SOCKET_IP, namespaces=['/'], transports=['websocket'])
+                await sio.emit('authentication', {'token': new_token})
 
         await sio.wait()
 
     def login(self, new_token):
         global token
         token = new_token
-        self.http.set_token(token)
         asyncio.run(self.main(new_token))
-
-        return self.sio
-
-    def on(self, event, handler=None, namespace=None):
-        namespace = namespace or '/'
-
-        def set_handler(handler):
-            if namespace not in self.sio.handlers:
-                self.sio.handlers[namespace] = {}
-            self.sio.handlers[namespace][event] = handler
-            return handler
-
-        if handler is None:
-            return set_handler
-        set_handler(handler)
-
-    def event(self, *args):
-        return self.on(args[0].__name__)(args[0])

@@ -7,6 +7,12 @@ sio = socketio.AsyncClient()
 token = None
 authErr = False
 
+try:
+    loop = asyncio.get_running_loop()
+except RuntimeError:  # if cleanup: 'RuntimeError: There is no current event loop..'
+    loop = None
+
+
 
 class Bot:
     global token
@@ -61,4 +67,10 @@ class Bot:
     def login(self, new_token):
         global token
         token = new_token
-        asyncio.run(self.main(new_token))
+        if loop and loop.is_running():
+            print('Async event loop already running')
+            tsk = loop.create_task(self.main(new_token))
+            # ^-- https://docs.python.org/3/library/asyncio-task.html#task-object
+        else:
+            print('Starting new event loop')
+            asyncio.run(self.main(new_token))

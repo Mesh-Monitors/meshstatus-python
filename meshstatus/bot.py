@@ -64,13 +64,7 @@ class Bot:
 
         await sio.wait()
 
-    def login(self, new_token):
+    async def login(self, new_token):
         global token
         token = new_token
-        if loop and loop.is_running():
-            print('Async event loop already running')
-            tsk = loop.create_task(self.main(new_token))
-            # ^-- https://docs.python.org/3/library/asyncio-task.html#task-object
-        else:
-            print('Starting new event loop')
-            asyncio.run(self.main(new_token))
+        await self.main(new_token)

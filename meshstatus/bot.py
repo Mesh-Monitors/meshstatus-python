@@ -68,3 +68,8 @@ class Bot:
         global token
         token = new_token
         await self.main(new_token)
+
+    def login2(self, new_token):
+        global token
+        token = new_token
+        asyncio.run(self.main(new_token))
